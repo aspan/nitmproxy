@@ -1,5 +1,11 @@
 package com.github.chhsiaoninety.nitmproxy.handler.protocol.http1;
 
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.github.chhsiaoninety.nitmproxy.Address;
 import com.github.chhsiaoninety.nitmproxy.ConnectionContext;
 import com.github.chhsiaoninety.nitmproxy.NitmProxyMaster;
@@ -7,6 +13,7 @@ import com.github.chhsiaoninety.nitmproxy.enums.Handler;
 import com.github.chhsiaoninety.nitmproxy.enums.ProxyMode;
 import com.github.chhsiaoninety.nitmproxy.event.OutboundChannelClosedEvent;
 import com.google.common.base.Strings;
+
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
@@ -19,12 +26,6 @@ import io.netty.handler.codec.http.HttpObjectAggregator;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.handler.codec.http.HttpServerCodec;
 import io.netty.handler.codec.http.HttpVersion;
-import io.netty.util.ReferenceCountUtil;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 public class Http1FrontendHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
     private static final Pattern PATH_PATTERN = Pattern.compile("(https?)://([a-zA-Z0-9\\.\\-]+)(:(\\d+))?(/.*)");
@@ -74,15 +75,15 @@ public class Http1FrontendHandler extends SimpleChannelInboundHandler<FullHttpRe
                                 FullHttpRequest request) throws Exception {
         if (master.config().getProxyMode() == ProxyMode.HTTP && !tunneled) {
             if (request.method() == HttpMethod.CONNECT) {
-                handleTunnelProxyConnection(ctx, request);
+                handleTunnelProxyConnection(ctx, request.retain());
             } else {
-                handleHttpProxyConnection(ctx, request);
+                handleHttpProxyConnection(ctx, request.retain());
             }
         } else {
             LOGGER.info("[Client ({})] => [Server ({})] : {}",
                         connectionContext.getClientAddr(), connectionContext.getServerAddr(),
                         request);
-            connectionContext.serverChannel().writeAndFlush(ReferenceCountUtil.retain(request));
+            connectionContext.serverChannel().writeAndFlush(request.retain());
         }
     }
 
